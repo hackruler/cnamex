@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-const currentVersion = "1.0.4" // Set the current version of the tool
+const currentVersion = "1.0.5" // Set the current version of the tool
 
 // Function to check CNAME record for a subdomain
 func checkCNAME(subdomain string) string {
