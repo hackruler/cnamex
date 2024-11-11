@@ -18,7 +18,7 @@ cat subdomains.txt | cnamex
 ```
 
 ```bash
-cnamex <input file>
+cnamex -f <input file>
 ```
 
 It will store the subdomains which has anycname to `cnames_found.txt`
