@@ -7,7 +7,7 @@
 To install **cnamex**, run the following command:
 
 ```bash
-go install github.com/hackruler/cnamex@v1.0.2
+go install github.com/hackruler/cnamex@v1.0.3
 ```
 ## Usage 
 
@@ -21,9 +21,5 @@ cat subdomains.txt | cnamex
 cnamex -f <input file>
 ```
 
-It will store the subdomains which has anycname to `cnames_found.txt`
 
-And
-
-It will store the subdomains which has not any cname to `no_cname-found.txt`
 
