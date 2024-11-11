@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-const currentVersion = "1.0.2" // Set the current version of the tool
+const currentVersion = "1.0.4" // Set the current version of the tool
 
 // Function to check CNAME record for a subdomain
 func checkCNAME(subdomain string) string {
@@ -174,11 +174,11 @@ func main() {
 					return
 				}
 				defer output.Close()
-				fmt.Fprintln(output, "Subdomains with CNAME records:")
+				fmt.Fprintln(output)
 			} else {
 				// If no output file, print to terminal
 				output = os.Stdout
-				fmt.Fprintln(output, "Subdomains with CNAME records:")
+				fmt.Fprintln(output)
 			}
 
 			// Read each subdomain and check for CNAME
