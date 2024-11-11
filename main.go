@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -9,21 +10,27 @@ import (
 	"io"
 	"net/http"
 	"io/ioutil"
+	"strconv"
 	"strings"
+	"time"
 )
 
-const currentVersion = "1.0.6" // Set the current version of the tool
+const currentVersion = "1.0.7"
 
-// Function to check CNAME record for a subdomain
-func checkCNAME(subdomain string) string {
-	cname, err := net.LookupCNAME(subdomain)
+// Function to check CNAME record for a subdomain with timeout
+func checkCNAME(subdomain string, timeout time.Duration) (string, bool) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	resolver := net.Resolver{}
+	cname, err := resolver.LookupCNAME(ctx, subdomain)
 	if err != nil {
-		return ""
+		return "", false
 	}
-	return cname
+	return cname, true
 }
 
-// Function to handle the help command
+// Function to show the help menu
 func showHelp(cmd *cobra.Command, args []string) {
 	fmt.Println("cnamex - Subdomain CNAME Lookup Tool - Made by Mahesh")
 	fmt.Println("Usage:")
@@ -32,14 +39,14 @@ func showHelp(cmd *cobra.Command, args []string) {
 	fmt.Println("  -h, --help     Show help menu")
 	fmt.Println("  -f, --file     Input file containing subdomains")
 	fmt.Println("  -o, --output   Output file to save subdomains with CNAME records")
+	fmt.Println("  -t, --timeout  Timeout for DNS lookup in seconds (default 10)")
 	fmt.Println("  -u, --update   Check for updates")
 	fmt.Println("Example:")
-	fmt.Println("  cnamex -f subdomains.txt -o output.txt")
+	fmt.Println("  cnamex -f subdomains.txt -o output.txt -t 5")
 }
 
 // Function to check for updates
 func checkForUpdates() {
-	// GitHub API URL to fetch the latest release version
 	latestReleaseURL := "https://api.github.com/repos/hackruler/cnamex/releases/latest"
 	resp, err := http.Get(latestReleaseURL)
 	if err != nil {
@@ -53,34 +60,28 @@ func checkForUpdates() {
 		return
 	}
 
-	// Parse the response body to get the version info
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("Error reading response body:", err)
 		return
 	}
 
-	// Extract the version from the response
 	latestVersion := extractVersion(body)
 	if latestVersion == "" {
 		fmt.Println("Could not determine the latest version")
 		return
 	}
 
-	// Compare with the current version
 	if latestVersion == currentVersion {
 		fmt.Println("The tool is already up-to-date.")
 	} else {
 		fmt.Println("Updating to the latest version...")
-
-		// Download the latest release binary (assuming it's hosted as a binary on GitHub)
 		downloadLatestVersion(latestVersion)
 	}
 }
 
 // Function to extract version from the GitHub API response
 func extractVersion(body []byte) string {
-	// Extract version from the GitHub API response (using simple string manipulation here)
 	bodyStr := string(body)
 	versionTag := `"tag_name": "v`
 	startIndex := strings.Index(bodyStr, versionTag)
@@ -99,10 +100,8 @@ func extractVersion(body []byte) string {
 
 // Function to download and install the latest version
 func downloadLatestVersion(version string) {
-	// GitHub download URL for the latest release binary
-	downloadURL := fmt.Sprintf("https://github.com/hackruler/cnamex/releases/download/%s/cnamex-darwin-amd64", version) // Modify for your platform
+	downloadURL := fmt.Sprintf("https://github.com/hackruler/cnamex/releases/download/%s/cnamex-darwin-amd64", version)
 
-	// Create the output file to save the binary
 	out, err := os.Create("/usr/local/bin/cnamex")
 	if err != nil {
 		fmt.Println("Error creating the output file:", err)
@@ -110,7 +109,6 @@ func downloadLatestVersion(version string) {
 	}
 	defer out.Close()
 
-	// Get the latest release binary
 	resp, err := http.Get(downloadURL)
 	if err != nil {
 		fmt.Println("Error downloading the release:", err)
@@ -118,14 +116,12 @@ func downloadLatestVersion(version string) {
 	}
 	defer resp.Body.Close()
 
-	// Copy the downloaded content to the output file
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
 		fmt.Println("Error writing to the output file:", err)
 		return
 	}
 
-	// Make the file executable
 	err = os.Chmod("/usr/local/bin/cnamex", 0755)
 	if err != nil {
 		fmt.Println("Error making the binary executable:", err)
@@ -139,22 +135,22 @@ func downloadLatestVersion(version string) {
 func main() {
 	var inputFile string
 	var outputFile string
+	var timeoutSec int
 
-	// Create a new cobra command
 	var rootCmd = &cobra.Command{
 		Use:   "cnamex",
 		Short: "Subdomain CNAME Lookup Tool",
 		Long:  `cnamex allows you to check CNAME records for a list of subdomains.`,
 		Run: func(cmd *cobra.Command, args []string) {
+			timeout := time.Duration(timeoutSec) * time.Second
+
 			var scanner *bufio.Scanner
 			var file *os.File
 			var err error
 
 			if inputFile == "" {
-				// If no file is provided, use standard input (piped input)
 				scanner = bufio.NewScanner(os.Stdin)
 			} else {
-				// If a file is provided, read from the file
 				file, err = os.Open(inputFile)
 				if err != nil {
 					fmt.Println("Error opening file:", err)
@@ -164,47 +160,38 @@ func main() {
 				scanner = bufio.NewScanner(file)
 			}
 
-			// Prepare output (either file or terminal)
 			var output *os.File
 			if outputFile != "" {
-				// If an output file is provided, open the file for writing
 				output, err = os.Create(outputFile)
 				if err != nil {
 					fmt.Println("Error creating output file:", err)
 					return
 				}
 				defer output.Close()
-
 			} else {
-				// If no output file, print to terminal
 				output = os.Stdout
-
 			}
 
-			// Read each subdomain and check for CNAME
 			for scanner.Scan() {
 				subdomain := scanner.Text()
-				cname := checkCNAME(subdomain)
-				if cname != "" {
-					// Output subdomain only if CNAME record exists
+				cname, found := checkCNAME(subdomain, timeout)
+				if found {
 					fmt.Fprintln(output, subdomain)
 				}
 			}
 
-			// Check for scanning errors
 			if err := scanner.Err(); err != nil {
 				fmt.Println("Error reading input:", err)
 			}
 		},
 	}
 
-	// Define flags for the command
 	rootCmd.Flags().StringVarP(&inputFile, "file", "f", "", "Input file containing subdomains")
 	rootCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file to save subdomains with CNAME records")
+	rootCmd.Flags().IntVarP(&timeoutSec, "timeout", "t", 10, "Timeout for DNS lookup in seconds (default 10)")
 	rootCmd.Flags().BoolP("update", "u", false, "Check for updates")
 	rootCmd.SetHelpFunc(showHelp)
 
-	// Add update command
 	var updateCmd = &cobra.Command{
 		Use:   "update",
 		Short: "Check for updates and update the tool",
@@ -214,7 +201,6 @@ func main() {
 	}
 	rootCmd.AddCommand(updateCmd)
 
-	// Execute the root command
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
