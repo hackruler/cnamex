@@ -7,7 +7,7 @@
 To install **cnamex**, run the following command:
 
 ```bash
-go install github.com/hackruler/cnamex@latest
+go install github.com/hackruler/cnamex@v1.0.2
 ```
 ## Usage 
 
