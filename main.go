@@ -174,7 +174,7 @@ func main() {
 					return
 				}
 				defer output.Close()
-				fmt.Fprintln(output)
+
 			} else {
 				// If no output file, print to terminal
 				output = os.Stdout
