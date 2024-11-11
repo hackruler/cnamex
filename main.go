@@ -202,7 +202,6 @@ func main() {
 	rootCmd.Flags().StringVarP(&inputFile, "file", "f", "", "Input file containing subdomains")
 	rootCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file to save subdomains with CNAME records")
 	rootCmd.Flags().BoolP("update", "u", false, "Check for updates")
-	rootCmd.MarkFlagRequired("file")
 	rootCmd.SetHelpFunc(showHelp)
 
 	// Add update command
